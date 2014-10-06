@@ -9,6 +9,13 @@ use Moose;
 
 A L<Test::BDD::Cucumber::Harness> subclass that generates html output.
 
+All report data is gathered and stored in $self->all_features.
+
+For HTML generation a L<Template> style template file is used.
+
+A templated based on bootstrap formating is included in the DATA section of the module
+an will be used by default.
+
 =cut
 
 use Time::HiRes qw ( time );
@@ -31,6 +38,12 @@ A filehandle to write output to; defaults to C<STDOUT>
 
 has 'fh' => ( is => 'rw', isa => 'FileHandle', default => sub { \*STDOUT } );
 
+=head2 all_features
+
+An Array holding a data structure with the results.
+
+=cut
+
 has all_features => ( is => 'ro', isa => 'ArrayRef', default => sub { [] } );
 has current_feature  => ( is => 'rw', isa => 'HashRef' );
 has current_scenario => ( is => 'rw', isa => 'HashRef' );
@@ -46,7 +59,25 @@ has 'template' => ( is => 'ro', isa => 'Template', lazy => 1,
 	},
 );
 
+=head2 template_file (default: undef)
+
+A path to a Template Toolkit template file to use for generating the HTML report.
+
+If no path is given the content will be read from the DATA section of the module containing
+the default template.
+
+=cut
+
 has 'template_file' => ( is => 'rw', isa => 'Maybe[Str]' );
+
+=head2 template_content (default: undef)
+
+The source code of the Template Toolkit template.
+
+If no content is given it will be read from a file or the DATA section. (see template_file)
+
+=cut
+
 has 'template_content' => ( is => 'rw', isa => 'Str',
 	default => sub {
 		my $self = shift;
@@ -67,7 +98,22 @@ has 'template_content' => ( is => 'rw', isa => 'Str',
 	},
 );
 
+=head2 title (default: Test Report)
+
+This could be used to set a title for the generated report.
+
+=cut
+
 has title => ( is => 'rw', isa => 'Str', default => "Test Report");
+
+has 'statistic' => ( is => 'ro', isa => 'HashRef', lazy => 1,
+	default => sub {
+		my $self = shift;
+		return {
+			map { $_ => 0 } values %{$self->_output_status},
+		};
+	},
+);
 
 sub feature {
     my ( $self, $feature ) = @_;
@@ -90,6 +136,12 @@ sub step_done {
     my ( $self, $context, $result ) = @_;
     my $duration = time() - $self->step_start_at;
     my $step_data = $self->format_step( $context, $result, $duration );
+    my $status = $step_data->{'result'}->{'status'};
+
+    $self->current_feature->{'statistic'}->{ $status }++;
+    $self->current_scenario->{'statistic'}->{ $status }++;
+    $self->statistic->{ $status }++;
+
     push @{ $self->current_scenario->{steps} }, $step_data;
 }
 
@@ -99,6 +151,7 @@ sub shutdown {
     my $template = $self->template_content;
     my $vars = {
 	    'all_features' => $self->all_features,
+	    'statistic' => $self->statistic,
 	    'title' => $self->title,
 	    'time' => Time::Piece->new(),
 	    'hostname' => hostname(),
@@ -107,10 +160,6 @@ sub shutdown {
     $self->template->process( \$template, $vars, $self->fh )
         or die $self->template->error;
 }
-
-##################################
-### Internal formating methods ###
-##################################
 
 sub get_keyword {
     my ( $self, $line_ref ) = @_;
@@ -138,7 +187,8 @@ sub format_feature {
         line        => $feature->name_line->number,
         description => $self->format_description($feature),
         tags        => $self->format_tags( $feature->tags ),
-        elements    => []
+        elements    => [],
+	statistic => { map { $_ => 0 } values %{$self->_output_status} },
     };
 }
 
@@ -151,7 +201,8 @@ sub format_scenario {
         line    => $scenario->line->number,
         tags    => $self->format_tags( $scenario->tags ),
         type    => $scenario->background ? 'background' : 'scenario',
-        steps   => []
+        steps   => [],
+	statistic => { map { $_ => 0 } values %{$self->_output_status} },
     };
 }
 
@@ -166,35 +217,85 @@ sub format_step {
     };
 }
 
-my %OUTPUT_STATUS = (
-    passing   => 'passed',
-    failing   => 'failed',
-    pending   => 'pending',
-    undefined => 'skipped',
+has '_output_status' => ( is => 'ro', isa => 'HashRef', lazy => 1,
+	    default => sub { {
+	    passing   => 'passed',
+	    failing   => 'failed',
+	    pending   => 'pending',
+	    undefined => 'skipped',
+    } },
 );
 
 sub format_result {
     my ( $self, $result, $duration ) = @_;
-    return { status => "undefined" } if not $result;
-    return {
-        status        => $OUTPUT_STATUS{ $result->result },
-        error_message => $result->output,
-        defined $duration
-        ? ( duration => int( $duration * 1_000_000_000 ) )
-        : (),    # nanoseconds
-    };
+    my $ret;
+
+    if( $result ) {
+	    $ret = {
+		status        => $self->_output_status->{ $result->result },
+		error_message => $result->output,
+		defined $duration
+		? ( duration => int( $duration * 1_000_000_000 ) )
+		: (),    # nanoseconds
+	    };
+    } else {
+    	$ret = { status => "undefined" };
+    }
+
+    return $ret;
 }
 
 1;
 
 __DATA__
+[% PERL -%]
+$stash->set( 'map_bootstrap_class', sub {
+	my $status = shift;
+	my $map = {
+		'passed' => 'success',
+		'skipped' => 'info',
+		'failed' => 'danger',
+		'pending' => 'warning',
+	};
+	return( $map->{ $status } );
+} );
+[% END -%]
+[% BLOCK statistic_tags -%]
+[% FOREACH status = [ 'passed', 'failed', 'pending', 'skipped' ] -%]
+	[% IF s.$status -%]
+<button type="button" class="btn [% size ? 'btn-' _ size : '' %] btn-[% map_bootstrap_class(status) %]" data-toggle="tooltip" data-placement="right" title="[% status %]">[% s.$status %]</button>
+	[% END -%]
+[% END -%]
+[% END -%]
+[% BLOCK statistic -%]
+<table class="table table-bordered">
+<thead>
+  <th>Status</th>
+  <th>Count</th>
+</thead>
+<tbody>
+  <tr class="[% s.passed ? map_bootstrap_class('passed') : '' %]">
+  	<td>Passed</td><td>[% s.passed %]</td>
+  </tr>
+  <tr class="[% s.failed ? map_bootstrap_class('failed') : '' %]">
+  	<td>Failed</td><td>[% s.failed %]</td>
+  </tr>
+  <tr class="[% s.pending ? map_bootstrap_class('pending') : '' %]">
+  	<td>Pending</td><td>[% s.pending %]</td>
+  </tr>
+  <tr class="[% s.skipped ? map_bootstrap_class('skipped') : '' %]">
+  	<td>Skipped</td><td>[% s.skipped %]</td>
+  </tr>
+</tbody>
+</table>
+[% END -%]
 [% BLOCK toc -%]
 <ul>
 [% FOREACH f = all_features -%]
-  <li><a href="#[% f.id %]">[% f.name %]</a></li>
+  <li><a href="#[% f.id %]">[% f.name %]</a>[% INCLUDE statistic_tags s=f.statistic size='xs' %]</li>
   <ul>
   [% FOREACH s = f.scenarios -%]
-    <li><a href="#[% s.id %]">[% s.name %]</a></li>
+    <li><a href="#[% s.id %]">[% s.name %]</a>[% INCLUDE statistic_tags s=s.statistic size='xs' %]</li>
   [% END -%]
   </ul>
 [% END -%]
@@ -209,20 +310,7 @@ __DATA__
 </tr></thead>
 <tbody>
 [% FOREACH step = s.steps -%]
-[%
-  IF step.result.status == 'passed';
-    class = 'success';
-  ELSIF  step.result.status == 'skipped';
-    class = 'info';
-  ELSIF  step.result.status == 'failed';
-    class = 'danger';
-  ELSIF  step.result.status == 'pending';
-    class = 'warning';
-  ELSE;
-    class = '';
-  END;
-%]
-<tr class="[% class %]">
+<tr class="[% map_bootstrap_class(step.result.status) %]">
 	<td class="step-name"><b>[% step.keyword %]</b> [% step.name %]
           <div class="step-line">(line: [% step.line %])</div></td>
 	<td class="step-result">[% step.result.status %]</td>
@@ -232,10 +320,10 @@ __DATA__
 </table>
 [% END -%]
 [% BLOCK feature -%]
-<h2 id="[% f.id %]">[% f.name %] <small>([% f.uri %])</small></h2>
+<h2 id="[% f.id %]">[% f.name %] <small>([% f.uri %]) [% INCLUDE statistic_tags s=f.statistic %]</small></h2>
 <p>[% f.description %]</p>
 [% FOREACH scenario = f.scenarios -%]
-    [% PROCESS scenario s=scenario -%]
+    [% INCLUDE scenario s=scenario -%]
 [% END -%]
 [% END -%]
 <!DOCTYPE html>
@@ -279,11 +367,13 @@ __DATA__
 	</tbody>
       </table>
 
+      <h2>Summary</h2>
+[% INCLUDE statistic s=statistic -%]
       <h2>Table of Content</h2>
-[% PROCESS toc %]
+[% INCLUDE toc %]
 
 [% FOREACH feature = all_features -%]
-        [% PROCESS feature f=feature -%]
+        [% INCLUDE feature f=feature -%]
 [% END -%]
 
     </div> <!-- /container -->
