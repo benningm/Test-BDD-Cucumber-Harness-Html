@@ -212,6 +212,9 @@ sub format_step {
     return {
         keyword => $step ? $step->verb_original : $step_context->verb,
         name => $step_context->text,
+        data_text => ref($step_context->data) ? undef : $step_context->data,
+        data_table => ref($step_context->data) eq 'ARRAY' ? $step_context->data : undef,
+        background => $step_context->background,
         line => $step ? $step->line->number : 0,
         result => $self->format_result( $result, $duration )
     };
@@ -312,9 +315,14 @@ $stash->set( 'map_bootstrap_class', sub {
 [% FOREACH step = s.steps -%]
 <tr class="[% map_bootstrap_class(step.result.status) %]">
 	<td class="step-name"><b>[% step.keyword %]</b> [% step.name %]
-          <div class="step-line">(line: [% step.line %])</div></td>
+          <div class="step-line">([% step.background ? 'background, ' : '' %]line: [% step.line %])</div></td>
 	<td class="step-result">[% step.result.status %]</td>
 </tr> 
+[% IF step.data_text -%]
+<tr>
+	<td colspan="2"><pre>[% step.data_text FILTER html %]</pre></td>
+</tr> 
+[% END -%]
 [% END -%]
 </tbody>
 </table>
