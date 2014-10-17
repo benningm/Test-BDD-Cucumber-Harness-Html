@@ -209,8 +209,10 @@ sub format_scenario {
 sub format_step {
     my ( $self, $step_context, $result, $duration ) = @_;
     my $step = $step_context->step;
+    my $rand = int( rand() * 10000000);
     return {
         keyword => $step ? $step->verb_original : $step_context->verb,
+        id => "step-".$rand, 
         name => $step_context->text,
         data_text => ref($step_context->data) ? undef : $step_context->data,
         data_table => ref($step_context->data) eq 'ARRAY' ? $step_context->data : undef,
@@ -306,26 +308,28 @@ $stash->set( 'map_bootstrap_class', sub {
 [% END -%]
 [% BLOCK scenario -%]
 <h3 id="[% s.id %]">[% s.name %]</h3>
-<table class="table step-table">
-<thead><tr>
-  <th class="step-name">Step</th>
-  <th class="step-result">Result</th>
-</tr></thead>
-<tbody>
+<div class="panel-group" id="[% s.id %]-accordion">
 [% FOREACH step = s.steps -%]
-<tr class="[% map_bootstrap_class(step.result.status) %]">
-	<td class="step-name"><b>[% step.keyword %]</b> [% step.name %]
-          <div class="step-line">([% step.background ? 'background, ' : '' %]line: [% step.line %])</div></td>
-	<td class="step-result">[% step.result.status %]</td>
-</tr> 
+<div class="panel panel-[% map_bootstrap_class(step.result.status) %]">
+	<div class="panel-heading"><a data-toggle="collapse" data-target="#[% step.id %]-body">
+<b>[% step.keyword %]</b> [% step.name %]
+
+<div class="step-line">([% step.background ? 'background, ' : '' %]line: [% step.line %])</div>
+<div class="step-result">[% step.result.status %]</div>
+	</a></div>
+	<div id="[% step.id %]-body" class="panel-collapse collapse[% step.result.status == 'failed' ? ' in' : '' %]"><div class="panel-body">
+[% IF step.result.error_message -%]
+<h4>Test Output:</h4>
+<pre>[% step.result.error_message FILTER html %]</pre>
+[% END -%]
 [% IF step.data_text -%]
-<tr>
-	<td colspan="2"><pre>[% step.data_text FILTER html %]</pre></td>
-</tr> 
+<h4>Example Data:</h4>
+<pre>[% step.data_text FILTER html %]</pre>
 [% END -%]
+	</div></div>
+</div>
 [% END -%]
-</tbody>
-</table>
+</div>
 [% END -%]
 [% BLOCK feature -%]
 <h2 id="[% f.id %]">[% f.name %] <small>([% f.uri %]) [% INCLUDE statistic_tags s=f.statistic %]</small></h2>
@@ -345,15 +349,20 @@ $stash->set( 'map_bootstrap_class', sub {
     <title>[% title %]</title>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
     <style type="text/css">
-    .step-table .step-name { text-align: left; }
-    .step-table .step-result { text-align: right; }
-    .step-table .step-line {
-      color: grey;
-      text-align: right;
-      display: inline;
-    }
+    .step-name { display: inline; text-align: left; }
+    .step-line { display: inline; text-align: left; color: grey; }
+    .step-result { float: right; display: inline; color: black; }
+    .panel-heading a { color: black; }
+    .panel-heading a:before {
+        font-family: 'Glyphicons Halflings';
+        content: "\e114";    
+     }
+     .panel-heading a.collapsed:before {
+         content: "\e080";
+     }
     </style>
   </head>
 
