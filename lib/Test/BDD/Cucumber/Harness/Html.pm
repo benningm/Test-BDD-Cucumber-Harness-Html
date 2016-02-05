@@ -52,10 +52,10 @@ has step_start_at    => ( is => 'rw', isa => 'Num' );
 has 'template' => ( is => 'ro', isa => 'Template', lazy => 1,
 	default => sub {
 		my $self = shift;
-                return Template->new(
-                        ABSOLUTE => 1,
-                        EVAL_PERL => 1,
-                );
+      return Template->new(
+        ABSOLUTE => 1,
+        EVAL_PERL => 1,
+      );
 	},
 );
 
@@ -116,139 +116,139 @@ has 'statistic' => ( is => 'ro', isa => 'HashRef', lazy => 1,
 );
 
 sub feature {
-    my ( $self, $feature ) = @_;
-    $self->current_feature( $self->format_feature($feature) );
-    push @{ $self->all_features }, $self->current_feature;
+  my ( $self, $feature ) = @_;
+  $self->current_feature( $self->format_feature($feature) );
+  push @{ $self->all_features }, $self->current_feature;
 }
 
 sub scenario {
-    my ( $self, $scenario, $dataset ) = @_;
-    $self->current_scenario( $self->format_scenario($scenario) );
-    push @{ $self->current_feature->{elements} }, $self->current_scenario;
+  my ( $self, $scenario, $dataset ) = @_;
+  $self->current_scenario( $self->format_scenario($scenario) );
+  push @{ $self->current_feature->{elements} }, $self->current_scenario;
 }
 
 sub step {
-    my ( $self, $context ) = @_;
-    $self->step_start_at( time() );
+  my ( $self, $context ) = @_;
+  $self->step_start_at( time() );
 }
 
 sub step_done {
-    my ( $self, $context, $result ) = @_;
-    my $duration = time() - $self->step_start_at;
-    my $step_data = $self->format_step( $context, $result, $duration );
-    my $status = $step_data->{'result'}->{'status'};
+  my ( $self, $context, $result ) = @_;
+  my $duration = time() - $self->step_start_at;
+  my $step_data = $self->format_step( $context, $result, $duration );
+  my $status = $step_data->{'result'}->{'status'};
 
-    $self->current_feature->{'statistic'}->{ $status }++;
-    $self->current_scenario->{'statistic'}->{ $status }++;
-    $self->statistic->{ $status }++;
+  $self->current_feature->{'statistic'}->{ $status }++;
+  $self->current_scenario->{'statistic'}->{ $status }++;
+  $self->statistic->{ $status }++;
 
-    push @{ $self->current_scenario->{steps} }, $step_data;
+  push @{ $self->current_scenario->{steps} }, $step_data;
 }
 
 sub shutdown {
-    my ($self) = @_;
-    my $html;
-    my $template = $self->template_content;
-    my $vars = {
-	    'all_features' => $self->all_features,
-	    'statistic' => $self->statistic,
-	    'title' => $self->title,
-	    'time' => Time::Piece->new(),
-	    'hostname' => hostname(),
-	    'command' => join(' ', $0, @ARGV),
-    };
-    $self->template->process( \$template, $vars, $self->fh )
-        or die $self->template->error;
+  my ($self) = @_;
+  my $html;
+  my $template = $self->template_content;
+  my $vars = {
+    'all_features' => $self->all_features,
+    'statistic' => $self->statistic,
+    'title' => $self->title,
+    'time' => Time::Piece->new(),
+    'hostname' => hostname(),
+    'command' => join(' ', $0, @ARGV),
+  };
+  $self->template->process( \$template, $vars, $self->fh )
+      or die $self->template->error;
 }
 
 sub get_keyword {
-    my ( $self, $line_ref ) = @_;
-    my ($keyword) = $line_ref->content =~ /^(\w+)/;
-    return $keyword;
+  my ( $self, $line_ref ) = @_;
+  my ($keyword) = $line_ref->content =~ /^(\w+)/;
+  return $keyword;
 }
 
 sub format_tags {
-    my ( $self, $tags_ref ) = @_;
-    return [ map { { name => '@' . $_ } } @$tags_ref ];
+  my ( $self, $tags_ref ) = @_;
+  return [ map { { name => '@' . $_ } } @$tags_ref ];
 }
 
 sub format_description {
-    my ( $self, $feature ) = @_;
-    return join "\n", map { $_->content } @{ $feature->satisfaction };
+  my ( $self, $feature ) = @_;
+  return join "\n", map { $_->content } @{ $feature->satisfaction };
 }
 
 sub format_feature {
-    my ( $self, $feature ) = @_;
-    return {
-        uri         => $feature->name_line->filename,
-        keyword     => $self->get_keyword( $feature->name_line ),
-        id          => "feature-" . int($feature),
-        name        => $feature->name,
-        line        => $feature->name_line->number,
-        description => $self->format_description($feature),
-        tags        => $self->format_tags( $feature->tags ),
-        elements    => [],
-	statistic => { map { $_ => 0 } values %{$self->_output_status} },
-    };
+  my ( $self, $feature ) = @_;
+  return {
+    uri         => $feature->name_line->filename,
+    keyword     => $self->get_keyword( $feature->name_line ),
+    id          => "feature-" . int($feature),
+    name        => $feature->name,
+    line        => $feature->name_line->number,
+    description => $self->format_description($feature),
+    tags        => $self->format_tags( $feature->tags ),
+    elements    => [],
+    statistic   => { map { $_ => 0 } values %{$self->_output_status} },
+  };
 }
 
 sub format_scenario {
-    my ( $self, $scenario, $dataset ) = @_;
-    return {
-        keyword => $self->get_keyword( $scenario->line ),
-        id      => "scenario-" . int($scenario),
-        name    => $scenario->name,
-        line    => $scenario->line->number,
-        tags    => $self->format_tags( $scenario->tags ),
-        type    => $scenario->background ? 'background' : 'scenario',
-        steps   => [],
-	statistic => { map { $_ => 0 } values %{$self->_output_status} },
-    };
+  my ( $self, $scenario, $dataset ) = @_;
+  return {
+    keyword => $self->get_keyword( $scenario->line ),
+    id      => "scenario-" . int($scenario),
+    name    => $scenario->name,
+    line    => $scenario->line->number,
+    tags    => $self->format_tags( $scenario->tags ),
+    type    => $scenario->background ? 'background' : 'scenario',
+    steps   => [],
+    statistic => { map { $_ => 0 } values %{$self->_output_status} },
+  };
 }
 
 sub format_step {
-    my ( $self, $step_context, $result, $duration ) = @_;
-    my $step = $step_context->step;
-    my $rand = int( rand() * 10000000);
-    return {
-        keyword => $step ? $step->verb_original : $step_context->verb,
-        keyword_en => $step_context->verb,
-        id => "step-".$rand, 
-        name => $step_context->text,
-        data_text => ref($step_context->data) ? undef : $step_context->data,
-        data_table => ref($step_context->data) eq 'ARRAY' ? $step_context->data : undef,
-        background => $step_context->background,
-        line => $step ? $step->line->number : 0,
-        result => $self->format_result( $result, $duration )
-    };
+  my ( $self, $step_context, $result, $duration ) = @_;
+  my $step = $step_context->step;
+  my $rand = int( rand() * 10000000);
+  return {
+    keyword => $step ? $step->verb_original : $step_context->verb,
+    keyword_en => $step_context->verb,
+    id => "step-".$rand, 
+    name => $step_context->text,
+    data_text => ref($step_context->data) ? undef : $step_context->data,
+    data_table => ref($step_context->data) eq 'ARRAY' ? $step_context->data : undef,
+    background => $step_context->background,
+    line => $step ? $step->line->number : 0,
+    result => $self->format_result( $result, $duration )
+  };
 }
 
 has '_output_status' => ( is => 'ro', isa => 'HashRef', lazy => 1,
-	    default => sub { {
-	    passing   => 'passed',
-	    failing   => 'failed',
-	    pending   => 'pending',
-	    undefined => 'skipped',
-    } },
+  default => sub { {
+    passing   => 'passed',
+    failing   => 'failed',
+    pending   => 'pending',
+    undefined => 'skipped',
+  } },
 );
 
 sub format_result {
-    my ( $self, $result, $duration ) = @_;
-    my $ret;
+  my ( $self, $result, $duration ) = @_;
+  my $ret;
 
-    if( $result ) {
-	    $ret = {
-		status        => $self->_output_status->{ $result->result },
-		error_message => $result->output,
-		defined $duration
-		? ( duration => int( $duration * 1_000_000_000 ) )
-		: (),    # nanoseconds
-	    };
-    } else {
-    	$ret = { status => "undefined" };
-    }
+  if( $result ) {
+    $ret = {
+      status        => $self->_output_status->{ $result->result },
+      error_message => $result->output,
+      defined $duration
+        ? ( duration => int( $duration * 1_000_000_000 ) )
+        : (),    # nanoseconds
+    };
+  } else {
+  	$ret = { status => "undefined" };
+  }
 
-    return $ret;
+  return $ret;
 }
 
 1;
