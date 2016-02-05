@@ -212,6 +212,7 @@ sub format_step {
     my $rand = int( rand() * 10000000);
     return {
         keyword => $step ? $step->verb_original : $step_context->verb,
+        keyword_en => $step_context->verb,
         id => "step-".$rand, 
         name => $step_context->text,
         data_text => ref($step_context->data) ? undef : $step_context->data,
@@ -261,6 +262,9 @@ $stash->set( 'map_bootstrap_class', sub {
 		'skipped' => 'info',
 		'failed' => 'danger',
 		'pending' => 'warning',
+		'given' => 'success',
+		'when' => 'info',
+		'then' => 'warning',
 	};
 	return( $map->{ $status } );
 } );
@@ -297,22 +301,22 @@ $stash->set( 'map_bootstrap_class', sub {
 [% BLOCK toc -%]
 <ul>
 [% FOREACH f = all_features -%]
-  <li><a href="#[% f.id %]">[% f.name %]</a>[% INCLUDE statistic_tags s=f.statistic size='xs' %]</li>
+  <li><a href="#[% f.id %]">[% f.name FILTER html %]</a>[% INCLUDE statistic_tags s=f.statistic size='xs' %]</li>
   <ul>
   [% FOREACH s = f.scenarios -%]
-    <li><a href="#[% s.id %]">[% s.name %]</a>[% INCLUDE statistic_tags s=s.statistic size='xs' %]</li>
+    <li><a href="#[% s.id %]">[% s.name FILTER html %]</a>[% INCLUDE statistic_tags s=s.statistic size='xs' %]</li>
   [% END -%]
   </ul>
 [% END -%]
 </ul>
 [% END -%]
 [% BLOCK scenario -%]
-<h3 id="[% s.id %]">[% s.name %]</h3>
+<h3 id="[% s.id %]">[% s.name FILTER html %]</h3>
 <div class="panel-group" id="[% s.id %]-accordion">
 [% FOREACH step = s.steps -%]
 <div class="panel panel-[% map_bootstrap_class(step.result.status) %]">
 	<div class="panel-heading"><a data-toggle="collapse" data-target="#[% step.id %]-body">
-<b>[% step.keyword %]</b> [% step.name %]
+<b class="text-[% map_bootstrap_class(step.keyword_en) %]">[% step.keyword %]</b> [% step.name FILTER html %]
 
 <div class="step-line">([% step.background ? 'background, ' : '' %]line: [% step.line %])</div>
 <div class="step-result">[% step.result.status %]</div>
@@ -332,8 +336,8 @@ $stash->set( 'map_bootstrap_class', sub {
 </div>
 [% END -%]
 [% BLOCK feature -%]
-<h2 id="[% f.id %]">[% f.name %] <small>([% f.uri %]) [% INCLUDE statistic_tags s=f.statistic %]</small></h2>
-<p>[% f.description %]</p>
+<h2 id="[% f.id %]">[% f.name FILTER html %] <small>([% f.uri %]) [% INCLUDE statistic_tags s=f.statistic %]</small></h2>
+<pre><code>[% f.description FILTER html %]</code></pre>
 [% FOREACH scenario = f.scenarios -%]
     [% INCLUDE scenario s=scenario -%]
 [% END -%]
