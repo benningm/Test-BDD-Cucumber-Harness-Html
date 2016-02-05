@@ -7,7 +7,31 @@ use Moose;
 
 =head1 DESCRIPTION
 
-A L<Test::BDD::Cucumber::Harness> subclass that generates html output.
+A L<Test::BDD::Cucumber::Harness> subclass that generates html reports.
+
+=head1 EXAMPLE USAGE
+
+  $ pherkin -o Html features/ > test-report.html
+
+=head1 EXAMPLE OUTPUT
+
+The default template uses bootstrap CSS for formatting.
+
+Example test reports from the L<Test::BDD::Cucumber> examples:
+
+=over
+
+=item Calculator example
+
+L<https://raw.githubusercontent.com/benningm/Test-BDD-Cucumber-Harness-Html/master/examples/calculator-report.html>
+
+=item Digest example
+
+L<https://raw.githubusercontent.com/benningm/Test-BDD-Cucumber-Harness-Html/master/examples/digest-report.html>
+
+=back
+
+=head1 HOW IT WORKS
 
 All report data is gathered and stored in $self->all_features.
 
