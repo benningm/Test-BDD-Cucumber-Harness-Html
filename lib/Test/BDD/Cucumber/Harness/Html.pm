@@ -23,11 +23,11 @@ Example test reports from the L<Test::BDD::Cucumber> examples:
 
 =item Calculator example
 
-L<https://raw.githubusercontent.com/benningm/Test-BDD-Cucumber-Harness-Html/master/examples/calculator-report.html>
+L<https://markusbenning.de/cucumber-html-examples/calculator-report.html>
 
 =item Digest example
 
-L<https://raw.githubusercontent.com/benningm/Test-BDD-Cucumber-Harness-Html/master/examples/digest-report.html>
+L<https://markusbenning.de/cucumber-html-examples/digest-report.html>
 
 =back
 
