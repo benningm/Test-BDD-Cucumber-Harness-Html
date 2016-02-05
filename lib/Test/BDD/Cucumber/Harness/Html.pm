@@ -17,7 +17,8 @@ A L<Test::BDD::Cucumber::Harness> subclass that generates html reports.
 
 The default template uses bootstrap CSS for formatting.
 
-Example test reports from the L<Test::BDD::Cucumber> examples:
+Example test reports from the L<Test::BDD::Cucumber> examples
+are included in the distribution tar ball or can be viewed online at:
 
 =over
 
